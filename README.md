@@ -3,7 +3,7 @@ Fast cross-platform HTTP benchmarking tool with COUCHBASE FTS testing code
 
 
 # based on bombardier [![Build Status](https://semaphoreci.com/api/v1/codesenberg/bombardier/branches/master/shields_badge.svg)](https://semaphoreci.com/codesenberg/bombardier) [![Go Report Card](https://goreportcard.com/badge/github.com/codesenberg/bombardier)](https://goreportcard.com/report/github.com/codesenberg/bombardier) [![GoDoc](https://godoc.org/github.com/codesenberg/bombardier?status.svg)](http://godoc.org/github.com/codesenberg/bombardier)
-bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance. 
+bombardier is a HTTP(S) benchmarking tool. It is written in Go programming language and uses a slightly modified version of the excellent [fasthttp](https://github.com/valyala/fasthttp) instead of Go's default http library, because of its lightning fast performance. 
 
 With `bombardier v1.1` and higher you can now use `net/http` client if you need to test HTTP/2.x services or want to use a more RFC-compliant HTTP client.
 
@@ -45,7 +45,7 @@ AFAIK, it's impossible to pass Host header correctly with `fasthttp`, you can us
 
 
 ## Examples Couchbase FTS OnPrem or Self Managed server 
-
+```
 CB_USERNAME=Administrator
 CB_PASSWORD=mypasswd
 CB_FTSHOST=192.168.3.150
@@ -182,11 +182,56 @@ time ./cb_fts_bench -m POST -H  "Content-Type: application/json"  -k -a -u ${CB_
 	-f ./RAND_QUERY_TEMPLATES/FTS.json \
 	-c 125 -L 32 
 
-````    
-## Examples (non Couchbase same as bombardier)
+````
+
+## Examples Couchbase Capella (cloud)
+
+In Capella load the travel-sample data
+
+In Capella allow your IP address to access the database
+
+In Capella create or verify that you have a database user with permissions to access the bucket
+
+	CB_USERNAME=dbuser
+	CB_PASSWORD=dbpasswd
+
+In Capella find a node that has FTS running as a service example (you node name with the FTS service will vary):
+
+	svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com
+
+You will need to provide the -k option to "cb_fts_test" avoid CERT security checks for TLS/SSL 
+or optionally install the Capella CERT into your system
+
+You must create an FTS index example assume you indexed all fields in the keyspace 
+`travel-sample.inventory.landmark` and it is assumeed you named your index: `myftsindex`
+
+A basic test one request ( -n 1) with a full command respnse dump ( -T):
+````
+	./cb_fts_bench -m POST -H "Content-Type: application/json" -t 15s -c 1 -k \
+		-u ${CB_USERNAME}:${CB_PASSWORD} -n 1 -f ../body.json -T \
+		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/index/myftsindex/query
+````
+A basic test 1000 requests ( -n 10000) with 100 client threads:
+````
+	./cb_fts_bench -m POST -H "Content-Type: application/json" -t 15s -c 100 -k \
+		-u ${CB_USERNAME}:${CB_PASSWORD} -n 10000 -f ../body.json \
+		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/index/myftsindex/query
+````
+## Examples Couchbase Elixir (serverless cloud)
+
+Refer to "Examples Couchbase Capella" however the FTS index names are not global, they are scoped so there
+is a different endpoint changes from:
+````
+		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/index/myftsindex/query
+````
+to:
+````
+		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/bucket/travel-sample/scope/inventory/index/myftsindex/query
+````
+## Examples (non Couchbase specific same as bombardier)
 Example of running `cb_queue_bench` against [this server](https://godoc.org/github.com/codesenberg/bombardier/cmd/utils/simplebenchserver):
 ```
-> ./cb_queue_bench -c 125 -n 10000000 http://localhost:8080
+./cb_queue_bench -c 125 -n 10000000 http://localhost:8080
 
 Bombarding http://localhost:8080 with 10000000 requests using 125 connections
  10000000 / 10000000 [============================================] 100.00% 37s Done!
@@ -210,7 +255,7 @@ Statistics        Avg      Stdev        Max
 ```
 Or, against a realworld server(with latency distribution):
 ```
-> ./cb_queue_bench -t 15 -c 200 -d 10s -l http://ya.ru
+./cb_queue_bench -t 15 -c 200 -d 10s -l http://ya.ru
 
 Bombarding http://ya.ru:80 for 10s using 200 connection(s)
 [==========================] 10s
@@ -238,50 +283,4 @@ Statistics        Avg      Stdev        Max
   Enq responses:
   Deq responses:
   Ack responses:
-
-## Examples Couchbase Capella (cloud)
-
-In Capella load the travel-sample data
-
-In Capella allow your IP address to access the database
-
-In Capella create or verify that you have a database user with permissions to access the bucket
-
-	CB_USERNAME=dbuser
-	CB_PASSWORD=dbpasswd
-
-In Capella find a node that has FTS running as a service  example:
-
-	svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com
-
-You will need to provide the -k option to "cb_fts_test" avoid CERT security checks for TLS/SSL 
-or optionally install the Capella CERT into your system
-
-You must create an FTS index example assume you indexed all fields in the keyspace 
-`travel-sample.inventory.landmark` and named your index:
-
-	"myftsindex"
-
-A basic test one request ( -n 1) with a full command respnse dump ( -T):
-
-	./cb_fts_bench -m POST -H "Content-Type: application/json" -t 15s -c 1 -k \
-		-u ${CB_USERNAME}:${CB_PASSWORD} -n 1 -f ../body.json -T \
-		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/index/myftsindex/query
-
-A basic test 1000 requests ( -n 10000) with 100 client threads:
-
-	./cb_fts_bench -m POST -H "Content-Type: application/json" -t 15s -c 100 -k \
-		-u ${CB_USERNAME}:${CB_PASSWORD} -n 10000 -f ../body.json \
-		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/index/myftsindex/query
-
-## Examples Couchbase Elixir (serverless cloud)
-
-Refer to "Examples Couchbase Capella" however the FTS index names are not global, they are scoped so there
-is a different endpoint changes from:
-
-		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/index/myftsindex/query
-to:
-
-		https://svc-dqis-node-003.0y1eouctajsyqla7.cloud.couchbase.com:18094/api/bucket/travel-sample/scope/inventory/index/myftsindex/query
-
 ```
